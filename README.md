@@ -1,15 +1,27 @@
 # ReliefGraph AI — Disaster Relief Coordination System
 > **Google Gemini Hackathon 2026** • Track: *Society & Well-being*  
 > **Team Name:** Cipher (BIT Durg)  
-> **Team Members:** Vimal Mishra (Leader), Ritu Mishra (Designer)
+> **Team Members:** Vimal Mishra (Leader), Ritu Mishra (Designer), Abhishek Dewangan, Vandana Sahu, Manish Kumar  
 
 ---
 
 ## 🎯 The Problem
-During disasters (floods, cyclones), conventional dashboards suffer from a fatal blindspot:
-1. When supplies are sent, they are prematurely marked as **"Dispatched = Fulfilled"**.
-2. If the transport breaks down or delivers to the wrong depot, subsequent cries for help from the ground are buried in noisy chat feeds.
-3. **ReliefGraph** uses **Google Gemini** to continuously cross-examine delivery records against real-time field reports, instantly flagging **unverified deliveries, quantity deficits, and conflicting logs** with clickable evidence timelines.
+During disasters (floods, cyclones), conventional relief dashboards suffer from a fatal blindspot:
+1. When emergency supplies are sent, they are prematurely marked as **"Dispatched = Fulfilled"**.
+2. If transport vehicles break down, get stuck in floodwaters, or deliver to the wrong shelter, subsequent cries for help from the ground are buried in noisy chat feeds.
+3. **ReliefGraph** uses **Google Gemini** to continuously cross-examine official delivery records against real-time field telemetry, instantly detecting **unverified deliveries, quantity deficits, supply mismatches, and conflicting logs** with clickable evidence audit trails.
+
+---
+
+## ⚡ Key Features
+
+- 🧠 **Gemini Causal Contradiction Engine:** Automatically flags mismatches between dispatch paperwork and on-ground field realities.
+- 🚚 **Gemini Smart Logistics Re-Routing Advisor:** Dynamic surplus-to-deficit optimization that identifies safe bypass routes and nearby surplus hubs (e.g., Nehru Stadium) to re-route critical supplies, saving 2+ hours of transit delay.
+- 🗺️ **Interactive Geospatial Map:** Leaflet-powered situational map with pulsing crisis markers, live shelter occupancy, and sector status filters.
+- 🕸️ **Relief Knowledge Graph:** Semantic visualization powered by Vis-network showing Shelter $\leftrightarrow$ Need $\leftrightarrow$ Dispatch relationships with highlighted `CONFLICTS_WITH` edges.
+- 📋 **Tactical Shelter Drill-Down Drawer:** Real-time stock meters (Drinking Water, Food, Medical, Baby Care), live headcount vs. capacity, and ground coordinator contact.
+- 🌐 **Multilingual Ingestion:** Ingests unstructured volunteer and victim reports in English, Hindi, and Hinglish.
+- 🛡️ **Zero-Dependency Resilient Fallback:** Runs seamlessly whether MongoDB is running in Docker, locally, or completely offline via our built-in in-memory engine.
 
 ---
 
@@ -21,7 +33,7 @@ Ensure **Docker Desktop** is running, then in the project root folder run:
 docker compose up -d
 ```
 
-That's it! Docker Compose will automatically spin up:
+Docker Compose will automatically spin up:
 - **MongoDB** container (`reliefgraph-mongodb`) on port `27017` with automatic health checks.
 - **ReliefGraph Backend** (`reliefgraph-backend`) on port `5000` with Gemini reasoning engine.
 - **ReliefGraph Frontend** (`reliefgraph-frontend`) on port `3000` with Nginx reverse proxy.
@@ -32,16 +44,41 @@ That's it! Docker Compose will automatically spin up:
 
 ---
 
+## 💻 Local Development (Without Docker)
+
+You can also run ReliefGraph directly on your machine without Docker or local MongoDB:
+
+```bash
+# 1. Start Backend (Runs on Port 5000)
+cd backend
+npm install
+npm run dev
+
+# 2. Start Frontend (in separate terminal, runs on Port 3000)
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
 ## ⚙️ Configuration (.env)
 
-Open `.env` in the root folder and set your Google Gemini API key:
+Create or edit `.env` in the root folder:
+
 ```env
+# Google Gemini API Key (Get yours at https://aistudio.google.com/app/apikey)
 GEMINI_API_KEY=your_actual_gemini_api_key_here
+
+# Application Configuration
 PORT=5000
 MONGO_URI=mongodb://mongodb:27017/reliefgraph
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.8-flash
 ```
-*(Note: If you don't provide an API key, ReliefGraph includes an intelligent heuristic fallback parser that keeps 100% of the demo operational!)*
+
+*(Note: If you don't supply a Gemini API key or are offline, ReliefGraph includes an intelligent heuristic fallback parser that keeps 100% of the demo operational for judges!)*
 
 ---
 
@@ -49,41 +86,37 @@ GEMINI_MODEL=gemini-2.5-flash
 
 1. **Dashboard Overview:**
    - Open `http://localhost:3000`.
-   - Observe the top 4 KPI cards: **Unresolved Needs**, **Unverified Deliveries**, **Resolved Cases**, **Disaster Reports Ingested**.
+   - Observe the top 4 interactive KPI cards: **Unresolved Needs**, **Unverified Deliveries**, **Resolved / Verified**, and **Disaster Telemetry**. Click any card to instantly filter the entire command center.
 
 2. **1-Click Flood Scenario Loader:**
    - Click the orange **"Run Simulation"** button in the top navbar.
-   - The system resets and ingests 35+ realistic flood reports across 5 sectors (Riverside School, Central Hospital, St. Jude Community Hall, East Embankment, Nehru Stadium).
+   - The system ingests realistic flood disaster reports across 5 sectors (Riverside School, Central Hospital, St. Jude Community Hall, East Embankment, Nehru Stadium).
 
 3. **Flagship Gemini Contradiction Alerts:**
-   - Look at the **Priority Contradiction Alerts** feed on the left:
-     - **Riverside School Water Crisis:** Delivery of 20 water cans logged at 10:30 AM, but follow-up report at 12:05 PM states *"Still no water, children dehydrated"*.
+   - Check the **Priority Contradiction Alerts** feed on the left:
+     - **Riverside School Water Crisis:** Outbound dispatch was logged at 10:30 AM, but follow-up field report at 12:05 PM states *"Still no water at the shelter. Children are dehydrated and crying."*
      - **Central Hospital Insulin Deficit:** 50 vials needed; only 10 dispatched.
-   - Click **"View Evidence Timeline"** on any alert to show judges the chronological evidence chain with exact quotes and Gemini's causal explanation!
+     - **St. Jude Infant Formula Crisis:** Dry raw grains sent where cooked meals and infant milk formula were urgently required.
+   - Click **"View Evidence Timeline"** on any alert to view the chronological audit trail with exact quotes and Gemini's causal explanation!
 
-4. **Interactive Tactical Views:**
-   - **Geospatial Map:** Switch between sectors on Leaflet map with pulsing red pins. Click pins to view on-site headcount and active shortages.
-   - **Knowledge Graph:** Click the **"Knowledge Graph"** tab to see the visual relationship network between Shelters, Needs, Dispatches, and dashed red `CONFLICTS_WITH` edges!
+4. **Smart Logistics Re-Routing:**
+   - Click **"Re-dispatch"** on any active crisis alert.
+   - The **Gemini Smart Logistics Re-routing Advisor** modal opens, comparing standard warehouse dispatch (sub-optimal, submerged routes) against dynamic re-routing from a surplus staging hub (saving 138 minutes).
+   - Click **"Approve & Execute AI Re-route"** to dispatch the expedited response.
 
-5. **Live Ingestion Test:**
+5. **Interactive Tactical Views:**
+   - **Geospatial Map:** Switch between sectors on Leaflet map with pulsing red pins. Click any pin to open the tactical drill-down drawer showing live resource meters and shelter capacity.
+   - **Knowledge Graph:** Click the **"Knowledge Graph"** tab to see the relational network between Shelters, Needs, Dispatches, and dashed red `CONFLICTS_WITH` edges.
+
+6. **Live Ingestion Test:**
    - Click **"Submit Report"** in the top navbar.
-   - Type any natural language message or click one of the quick presets to watch Gemini extract entities and recalculate conflicts in real-time!
+   - Type any natural language field report (English / Hindi / Hinglish) or click one of the quick presets to watch Gemini extract structured entities and re-evaluate contradictions in real time.
 
 ---
 
-## 💻 Local Development (Without Docker)
+## 🛠️ Technology Stack
 
-If you wish to run without Docker:
-
-```bash
-# 1. Start Backend
-cd backend
-npm install
-npm run dev
-
-# 2. Start Frontend (in separate terminal)
-cd frontend
-npm install
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000).
+- **AI & Reasoning:** Google Gemini API (`@google/genai` SDK, `gemini-3.8-flash` / `gemini-2.0-flash`), Causal Reasoning Pipelines
+- **Frontend:** React 18, Vite, Tailwind CSS, Lucide React, Leaflet, React-Leaflet, Vis-network
+- **Backend:** Node.js, Express.js, Mongoose, Resilient In-Memory Store Fallback
+- **DevOps:** Docker, Docker Compose, Nginx Reverse Proxy
