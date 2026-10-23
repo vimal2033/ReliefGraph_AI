@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createHybridModel, memoryStore } from '../services/memoryStore.js';
 
 const needSchema = new mongoose.Schema(
   {
@@ -39,4 +40,5 @@ const needSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Need = mongoose.models.Need || mongoose.model('Need', needSchema);
+const MongooseNeed = mongoose.models.Need || mongoose.model('Need', needSchema);
+export const Need = createHybridModel(MongooseNeed, memoryStore.needs);

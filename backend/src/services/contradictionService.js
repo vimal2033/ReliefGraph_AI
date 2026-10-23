@@ -9,7 +9,7 @@ import { Need } from '../models/Need.js';
  * Evaluates chronological reports & dispatches for a shelter + resource category
  * to detect unverified deliveries, quantity gaps, and lingering unmet needs.
  */
-export async function evaluateContradictions(shelterId, resourceCategory) {
+export async function evaluateContradictions(shelterId, resourceCategory, isSimulation = false) {
   try {
     const shelter = await Shelter.findById(shelterId);
     if (!shelter) return null;
@@ -34,7 +34,7 @@ export async function evaluateContradictions(shelterId, resourceCategory) {
 
     reports.forEach((r) => {
       timeline.push({
-        type: r.extracted.isDispatch ? 'DISPATCH_LOG' : 'FIELD_REPORT',
+        type: r.extracted?.isDispatch ? 'DISPATCH_LOG' : 'FIELD_REPORT',
         source: r.source,
         sender: r.senderName,
         text: r.rawText,
@@ -59,8 +59,10 @@ export async function evaluateContradictions(shelterId, resourceCategory) {
     // Sort timeline strictly by timestamp
     timeline.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Call Gemini to reason over the timeline
-    const analysis = await runGeminiReasoning(shelter.name, resourceCategory, timeline);
+    // Call Gemini (or fast deterministic reasoning for pre-seeded simulation)
+    const analysis = isSimulation
+      ? fallbackRuleReasoning(shelter.name, resourceCategory, timeline)
+      : await runGeminiReasoning(shelter.name, resourceCategory, timeline);
 
     if (analysis && analysis.hasContradiction) {
       // Find or create active alert
@@ -124,8 +126,11 @@ async function runGeminiReasoning(shelterName, resourceCategory, timeline) {
   const gemini = getGeminiClient();
 
   if (gemini && timeline.length >= 2) {
-    try {
-      const prompt = `You are ReliefGraph Reasoning Engine.
+    const modelsToTry = [GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].filter(
+      (m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx
+    );
+
+    const prompt = `You are ReliefGraph Reasoning Engine.
 Analyze the chronological timeline of field reports and supply dispatches for "${shelterName}" regarding "${resourceCategory}".
 
 Timeline:
@@ -134,7 +139,7 @@ ${timeline.map((t, idx) => `${idx + 1}. [${t.time}] (${t.source}): "${t.text}"`)
 Task:
 Determine if there is a contradiction, supply deficit, or unverified delivery.
 For example:
-- A dispatch was recorded, but a subsequent field report states the supplies are still missing ("Still no water").
+- A dispatch was recorded, but a subsequent field report states the supplies are still missing ("Still no water", "stuck in mud").
 - The quantity dispatched is drastically below the reported need.
 - A critical emergency is reported with zero dispatch response.
 
@@ -146,22 +151,25 @@ Respond ONLY with valid JSON (no markdown ticks):
   "explanation": "Concise 2-sentence rationale citing specific times and quotes"
 }`;
 
-      const response = await gemini.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: prompt,
-      });
+    for (const model of modelsToTry) {
+      try {
+        const response = await gemini.models.generateContent({
+          model,
+          contents: prompt,
+        });
 
-      let jsonText = response.text ? response.text.trim() : '';
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/^```json\s*/, '').replace(/```$/, '').trim();
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/^```\s*/, '').replace(/```$/, '').trim();
+        let jsonText = response.text ? response.text.trim() : '';
+        if (jsonText.startsWith('```json')) {
+          jsonText = jsonText.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+        } else if (jsonText.startsWith('```')) {
+          jsonText = jsonText.replace(/^```\s*/, '').replace(/```$/, '').trim();
+        }
+
+        const parsed = JSON.parse(jsonText);
+        return parsed;
+      } catch (err) {
+        console.warn(`[Contradiction Service] Model ${model} reasoning failed: ${err.message}`);
       }
-
-      const parsed = JSON.parse(jsonText);
-      return parsed;
-    } catch (err) {
-      console.warn('[Contradiction Service] Gemini reasoning error, using rule-based reasoning:', err.message);
     }
   }
 
@@ -193,7 +201,14 @@ function fallbackRuleReasoning(shelterName, resourceCategory, timeline) {
         lower.includes('urgent') ||
         lower.includes('no water') ||
         lower.includes('no food') ||
-        lower.includes('no medicine')
+        lower.includes('no medicine') ||
+        lower.includes('stuck') ||
+        lower.includes('mud') ||
+        lower.includes('only') ||
+        lower.includes('deficit') ||
+        lower.includes('no baby') ||
+        lower.includes('no stove') ||
+        lower.includes('cannot')
       ) {
         hasPostDispatchDistress = true;
         lastDistressQuote = item.text;
@@ -202,20 +217,24 @@ function fallbackRuleReasoning(shelterName, resourceCategory, timeline) {
   });
 
   if (hasDispatch && hasPostDispatchDistress) {
+    const lower = lastDistressQuote.toLowerCase();
+    const isMismatch = lower.includes('only') || lower.includes('deficit') || lower.includes('exhausted') || lower.includes('no stove');
     return {
       hasContradiction: true,
-      conflictType: 'DELIVERY_CONTRADICTION',
+      conflictType: isMismatch ? 'QUANTITY_MISMATCH' : 'DELIVERY_CONTRADICTION',
       severity: 'CRITICAL',
-      explanation: `Contradiction detected: Outbound delivery was logged ("${dispatchQuote}"), but a subsequent field report at ${shelterName} reports ("${lastDistressQuote}"). Supplies appear missing or stranded in transit.`,
+      explanation: isMismatch
+        ? `Quantity / Supply Mismatch detected: Dispatch was logged ("${dispatchQuote}"), but subsequent field report at ${shelterName} reports ("${lastDistressQuote}").`
+        : `Contradiction detected: Outbound delivery was logged ("${dispatchQuote}"), but a subsequent field report at ${shelterName} reports ("${lastDistressQuote}"). Supplies appear missing or stranded in transit.`,
     };
   }
 
-  if (timeline.some((t) => t.text.toLowerCase().includes('insulin') || t.text.toLowerCase().includes('dying') || t.text.toLowerCase().includes('critical'))) {
+  if (timeline.some((t) => t.text.toLowerCase().includes('insulin') || t.text.toLowerCase().includes('dying') || t.text.toLowerCase().includes('critical') || t.text.toLowerCase().includes('shock'))) {
     return {
       hasContradiction: true,
       conflictType: 'UNMET_EMERGENCY',
       severity: 'CRITICAL',
-      explanation: `Urgent life-threatening medical shortage flagged at ${shelterName}. No confirmed fulfillment logged yet.`,
+      explanation: `Urgent life-threatening emergency shortage flagged at ${shelterName}. Immediate dispatch required.`,
     };
   }
 

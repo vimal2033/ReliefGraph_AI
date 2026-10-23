@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createHybridModel, memoryStore } from '../services/memoryStore.js';
 
 const reportSchema = new mongoose.Schema(
   {
@@ -43,4 +44,5 @@ const reportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Report = mongoose.models.Report || mongoose.model('Report', reportSchema);
+const MongooseReport = mongoose.models.Report || mongoose.model('Report', reportSchema);
+export const Report = createHybridModel(MongooseReport, memoryStore.reports);

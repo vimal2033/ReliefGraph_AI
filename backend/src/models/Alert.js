@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createHybridModel, memoryStore } from '../services/memoryStore.js';
 
 const alertSchema = new mongoose.Schema(
   {
@@ -44,4 +45,5 @@ const alertSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Alert = mongoose.models.Alert || mongoose.model('Alert', alertSchema);
+const MongooseAlert = mongoose.models.Alert || mongoose.model('Alert', alertSchema);
+export const Alert = createHybridModel(MongooseAlert, memoryStore.alerts);

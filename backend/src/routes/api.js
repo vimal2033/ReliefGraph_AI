@@ -30,7 +30,7 @@ router.get('/stats', async (req, res) => {
       totalReports,
       unresolvedNeeds: unresolvedAlerts,
       unverifiedDeliveries,
-      resolvedCount: resolvedCount || 12, // fallback aesthetic baseline if early
+      resolvedCount,
       totalShelters,
       lastUpdated: new Date().toISOString(),
     });
@@ -94,8 +94,8 @@ router.get('/alerts/:id/reroute-plan', async (req, res) => {
     // Find shelters with surplus or stable resources
     const shelters = await Shelter.find();
     const surplusShelter = shelters.find(
-      (s) => s.status === 'STABLE' && s._id.toString() !== alert.shelterId.toString()
-    ) || shelters.find((s) => s._id.toString() !== alert.shelterId.toString());
+      (s) => s.status === 'STABLE' && String(s._id) !== String(alert.shelterId)
+    ) || shelters.find((s) => String(s._id) !== String(alert.shelterId));
 
     const surplusName = surplusShelter ? surplusShelter.name : 'Nehru Stadium Arena';
     const destinationName = alert.shelterName;
@@ -154,6 +154,15 @@ router.post('/alerts/:id/execute-reroute', async (req, res) => {
     alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed supplies from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
     await alert.save();
 
+    // Check remaining active alerts
+    const remaining = await Alert.countDocuments({
+      shelterId: alert.shelterId,
+      status: 'ACTIVE_UNRESOLVED',
+    });
+    if (remaining === 0) {
+      await Shelter.findByIdAndUpdate(alert.shelterId, { status: 'WARNING' });
+    }
+
     // Create tracking dispatch
     const dispatch = new Dispatch({
       trackingCode: `REROUTE-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -185,6 +194,15 @@ router.post('/alerts/:id/redispatch', async (req, res) => {
 
     alert.status = 'RE_DISPATCHED';
     await alert.save();
+
+    // Check remaining active alerts
+    const remaining = await Alert.countDocuments({
+      shelterId: alert.shelterId,
+      status: 'ACTIVE_UNRESOLVED',
+    });
+    if (remaining === 0) {
+      await Shelter.findByIdAndUpdate(alert.shelterId, { status: 'WARNING' });
+    }
 
     // Create new rapid dispatch
     const newDispatch = new Dispatch({
@@ -281,6 +299,7 @@ router.post('/reports', async (req, res) => {
         let need = await Need.findOne({
           shelterId: matchedShelter._id,
           resourceCategory: extracted.resourceCategory,
+          status: { $in: ['OPEN', 'CONTRADICTION_FLAGGED', 'PARTIALLY_MET'] },
         });
 
         if (!need) {
@@ -304,6 +323,7 @@ router.post('/reports', async (req, res) => {
             ],
           });
         } else {
+          need.urgency = extracted.urgency;
           need.timeline.push({
             formattedTime,
             eventType: 'FOLLOW_UP_REPORT',
@@ -335,13 +355,13 @@ router.get('/graph', async (req, res) => {
   try {
     const shelters = await Shelter.find();
     const needs = await Need.find({ status: { $ne: 'RESOLVED' } });
-    const dispatches = await Dispatch.find().limit(20);
+    const dispatches = await Dispatch.find().limit(50);
     const alerts = await Alert.find({ status: 'ACTIVE_UNRESOLVED' });
 
     const nodes = [];
     const edges = [];
 
-    // 1. Shelter Nodes (Primary blue/cyan hubs)
+    // 1. Shelter Nodes (Primary hubs)
     shelters.forEach((s) => {
       nodes.push({
         id: `shelter_${s._id}`,
@@ -405,10 +425,10 @@ router.get('/graph', async (req, res) => {
     alerts.forEach((a) => {
       // Find matching dispatch and need
       const matchingNeed = needs.find(
-        (n) => n.shelterId.toString() === a.shelterId.toString() && n.resourceCategory === a.resourceCategory
+        (n) => String(n.shelterId) === String(a.shelterId) && n.resourceCategory === a.resourceCategory
       );
       const matchingDispatch = dispatches.find(
-        (d) => d.shelterId.toString() === a.shelterId.toString() && d.resourceCategory === a.resourceCategory
+        (d) => String(d.shelterId) === String(a.shelterId) && d.resourceCategory === a.resourceCategory
       );
 
       if (matchingNeed && matchingDispatch) {
@@ -416,6 +436,16 @@ router.get('/graph', async (req, res) => {
           from: `dispatch_${matchingDispatch._id}`,
           to: `need_${matchingNeed._id}`,
           label: 'CONFLICTS_WITH',
+          color: { color: '#EF4444', highlight: '#FF0055' },
+          dashes: true,
+          width: 3,
+        });
+      } else if (matchingNeed) {
+        // Unmet emergency with no dispatch
+        edges.push({
+          from: `shelter_${a.shelterId}`,
+          to: `need_${matchingNeed._id}`,
+          label: 'UNMET_CRISIS',
           color: { color: '#EF4444', highlight: '#FF0055' },
           dashes: true,
           width: 3,

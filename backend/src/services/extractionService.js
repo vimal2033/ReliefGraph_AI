@@ -7,8 +7,13 @@ export async function extractReportEntities(rawText, sourceHint = 'VOLUNTEER') {
   const gemini = getGeminiClient();
 
   if (gemini) {
-    try {
-      const prompt = `You are ReliefGraph AI, an emergency response intelligence agent.
+    const modelsToTry = [GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'].filter(
+      (m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx
+    );
+
+    for (const model of modelsToTry) {
+      try {
+        const prompt = `You are ReliefGraph AI, an emergency response intelligence agent.
 Analyze the following natural language field report from a disaster zone and extract structured entity information.
 Source hint: "${sourceHint}".
 
@@ -36,27 +41,27 @@ Return ONLY valid JSON matching this structure without Markdown formatting or ba
   "sentiment": "string"
 }`;
 
-      const response = await gemini.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: prompt,
-      });
+        const response = await gemini.models.generateContent({
+          model,
+          contents: prompt,
+        });
 
-      let jsonText = response.text ? response.text.trim() : '';
-      // Strip potential markdown backticks
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/^```json\s*/, '').replace(/```$/, '').trim();
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/^```\s*/, '').replace(/```$/, '').trim();
+        let jsonText = response.text ? response.text.trim() : '';
+        if (jsonText.startsWith('```json')) {
+          jsonText = jsonText.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+        } else if (jsonText.startsWith('```')) {
+          jsonText = jsonText.replace(/^```\s*/, '').replace(/```$/, '').trim();
+        }
+
+        const parsed = JSON.parse(jsonText);
+        return {
+          ...parsed,
+          confidenceScore: 0.98,
+          extractedBy: `Gemini (${model})`,
+        };
+      } catch (err) {
+        console.warn(`[Extraction Service] Model ${model} failed: ${err.message}`);
       }
-
-      const parsed = JSON.parse(jsonText);
-      return {
-        ...parsed,
-        confidenceScore: 0.98,
-        extractedBy: 'Gemini-2.5-Flash',
-      };
-    } catch (err) {
-      console.warn('[Extraction Service] Gemini extraction failed, falling back to heuristic parser:', err.message);
     }
   }
 
@@ -64,7 +69,7 @@ Return ONLY valid JSON matching this structure without Markdown formatting or ba
   return fallbackExtraction(rawText, sourceHint);
 }
 
-function fallbackExtraction(text, sourceHint) {
+export function fallbackExtraction(text, sourceHint) {
   const lower = text.toLowerCase();
   
   // Detect Category
@@ -73,13 +78,13 @@ function fallbackExtraction(text, sourceHint) {
   if (lower.includes('water') || lower.includes('paani') || lower.includes('drinking') || lower.includes('can')) {
     category = 'WATER';
     item = 'Drinking Water Cans';
-  } else if (lower.includes('food') || lower.includes('ration') || lower.includes('packet') || lower.includes('khana') || lower.includes('meal')) {
+  } else if (lower.includes('food') || lower.includes('ration') || lower.includes('packet') || lower.includes('khana') || lower.includes('meal') || lower.includes('rice') || lower.includes('pulse')) {
     category = 'FOOD';
     item = 'Cooked Meals / Ration Kits';
   } else if (lower.includes('insulin') || lower.includes('medicine') || lower.includes('medical') || lower.includes('doctor') || lower.includes('bandage') || lower.includes('first aid')) {
     category = 'MEDICAL';
     item = 'Emergency Medicines / Medical Kits';
-  } else if (lower.includes('baby') || lower.includes('milk') || lower.includes('infant') || lower.includes('diaper')) {
+  } else if (lower.includes('baby') || lower.includes('milk') || lower.includes('infant') || lower.includes('formula') || lower.includes('diaper')) {
     category = 'BABY_CARE';
     item = 'Infant Milk & Baby Supplies';
   } else if (lower.includes('tent') || lower.includes('tarpaulin') || lower.includes('blanket') || lower.includes('shelter')) {
@@ -98,7 +103,7 @@ function fallbackExtraction(text, sourceHint) {
 
   // Detect Urgency
   let urgency = 'MEDIUM';
-  if (lower.includes('critical') || lower.includes('emergency') || lower.includes('urgent') || lower.includes('still no') || lower.includes('dying') || lower.includes('running low')) {
+  if (lower.includes('critical') || lower.includes('emergency') || lower.includes('urgent') || lower.includes('still no') || lower.includes('dying') || lower.includes('running low') || lower.includes('shock')) {
     urgency = 'CRITICAL';
   } else if (lower.includes('need') || lower.includes('shortage') || lower.includes('deficit')) {
     urgency = 'HIGH';
@@ -116,12 +121,17 @@ function fallbackExtraction(text, sourceHint) {
   else if (lower.includes('east dike') || lower.includes('embankment') || lower.includes('dike')) location = 'East Embankment Relief Camp';
   else if (lower.includes('stadium') || lower.includes('nehru')) location = 'Nehru Stadium Arena';
 
+  let unit = 'units';
+  if (category === 'WATER') unit = 'cans';
+  else if (category === 'FOOD') unit = 'packets';
+  else if (category === 'MEDICAL') unit = 'vials';
+
   return {
     location,
     resourceCategory: category,
     itemDescription: item,
     quantity: qty,
-    unit: category === 'WATER' ? 'cans' : (category === 'FOOD' ? 'packets' : 'units'),
+    unit,
     isDispatch,
     urgency,
     sentiment: urgency === 'CRITICAL' ? 'Distress urgency detected' : 'Standard situational report',

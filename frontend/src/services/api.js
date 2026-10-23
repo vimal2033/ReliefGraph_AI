@@ -6,7 +6,7 @@ const API_BASE = '/api';
 export const api = {
   async getStats() {
     try {
-      const res = await axios.get(`${API_BASE}/stats`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/stats`, { timeout: 6000 });
       return res.data;
     } catch {
       return FALLBACK_STATS;
@@ -15,7 +15,7 @@ export const api = {
 
   async getAlerts() {
     try {
-      const res = await axios.get(`${API_BASE}/alerts`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/alerts`, { timeout: 6000 });
       return res.data && res.data.length > 0 ? res.data : FALLBACK_ALERTS;
     } catch {
       return FALLBACK_ALERTS;
@@ -24,7 +24,7 @@ export const api = {
 
   async getShelters() {
     try {
-      const res = await axios.get(`${API_BASE}/shelters`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/shelters`, { timeout: 6000 });
       return res.data && res.data.length > 0 ? res.data : FALLBACK_SHELTERS;
     } catch {
       return FALLBACK_SHELTERS;
@@ -33,7 +33,7 @@ export const api = {
 
   async getReports(limit = 25) {
     try {
-      const res = await axios.get(`${API_BASE}/reports?limit=${limit}`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/reports?limit=${limit}`, { timeout: 6000 });
       return res.data;
     } catch {
       return [];
@@ -42,7 +42,7 @@ export const api = {
 
   async getGraph() {
     try {
-      const res = await axios.get(`${API_BASE}/graph`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/graph`, { timeout: 6000 });
       return res.data;
     } catch {
       return { nodes: [], edges: [] };
@@ -66,7 +66,7 @@ export const api = {
 
   async getReroutePlan(alertId) {
     try {
-      const res = await axios.get(`${API_BASE}/alerts/${alertId}/reroute-plan`, { timeout: 3000 });
+      const res = await axios.get(`${API_BASE}/alerts/${alertId}/reroute-plan`, { timeout: 6000 });
       return res.data;
     } catch {
       return {

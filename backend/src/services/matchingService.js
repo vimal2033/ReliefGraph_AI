@@ -94,9 +94,9 @@ export const DEFAULT_SHELTERS = [
 ];
 
 /**
- * Initializes default shelters in MongoDB if empty or updates them
+ * Initializes default shelters in MongoDB/memory if empty or resets them
  */
-export async function ensureDefaultShelters() {
+export async function ensureDefaultShelters(forceReset = false) {
   try {
     const count = await Shelter.countDocuments();
     if (count === 0) {
@@ -104,11 +104,22 @@ export async function ensureDefaultShelters() {
       await Shelter.insertMany(DEFAULT_SHELTERS);
       console.log('[Matching Service] 5 default disaster shelters seeded.');
     } else {
-      // Update existing shelters to ensure stockHealth is present
+      // Update existing shelters
       for (const def of DEFAULT_SHELTERS) {
+        const updatePayload = {
+          stockHealth: def.stockHealth,
+          ...(forceReset
+            ? {
+                status: def.status,
+                currentHeadcount: def.currentHeadcount,
+                activeNeedsSummary: def.activeNeedsSummary,
+              }
+            : {}),
+        };
+
         await Shelter.updateOne(
           { normalizedName: def.normalizedName },
-          { $set: { stockHealth: def.stockHealth } }
+          { $set: updatePayload }
         );
       }
     }

@@ -3,7 +3,7 @@ import { Report } from '../models/Report.js';
 import { Dispatch } from '../models/Dispatch.js';
 import { Need } from '../models/Need.js';
 import { Alert } from '../models/Alert.js';
-import { extractReportEntities } from './extractionService.js';
+import { extractReportEntities, fallbackExtraction } from './extractionService.js';
 import { matchLocationToShelter, ensureDefaultShelters } from './matchingService.js';
 import { evaluateContradictions } from './contradictionService.js';
 
@@ -146,7 +146,7 @@ export const SIMULATION_REPORTS = [
  */
 export async function runFullSimulation() {
   console.log('[Simulation] Resetting current disaster data...');
-  await ensureDefaultShelters();
+  await ensureDefaultShelters(true);
   await Report.deleteMany({});
   await Dispatch.deleteMany({});
   await Need.deleteMany({});
@@ -157,8 +157,8 @@ export async function runFullSimulation() {
   const processedReports = [];
 
   for (const item of SIMULATION_REPORTS) {
-    // 1. Extract entities
-    const extracted = await extractReportEntities(item.rawText, item.source);
+    // 1. Extract entities (Fast deterministic parsing for simulation benchmark)
+    const extracted = fallbackExtraction(item.rawText, item.source);
 
     // 2. Match to Shelter
     const matchedShelter = await matchLocationToShelter(extracted.location);
@@ -235,7 +235,7 @@ export async function runFullSimulation() {
       }
 
       // 5. Evaluate Contradictions for this shelter & category
-      await evaluateContradictions(matchedShelter._id, extracted.resourceCategory);
+      await evaluateContradictions(matchedShelter._id, extracted.resourceCategory, true);
     }
 
     processedReports.push(reportDoc);

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createHybridModel, memoryStore } from '../services/memoryStore.js';
 
 const shelterSchema = new mongoose.Schema(
   {
@@ -29,4 +30,5 @@ const shelterSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Shelter = mongoose.models.Shelter || mongoose.model('Shelter', shelterSchema);
+const MongooseShelter = mongoose.models.Shelter || mongoose.model('Shelter', shelterSchema);
+export const Shelter = createHybridModel(MongooseShelter, memoryStore.shelters);

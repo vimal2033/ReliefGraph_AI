@@ -34,7 +34,7 @@ export default function SmartRerouteModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Surplus $\rightarrow$ Deficit Dynamic Optimization for {plan.destinationShelter}
+                Surplus → Deficit Dynamic Optimization for {plan.destinationShelter}
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createHybridModel, memoryStore } from '../services/memoryStore.js';
 
 const dispatchSchema = new mongoose.Schema(
   {
@@ -25,4 +26,5 @@ const dispatchSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Dispatch = mongoose.models.Dispatch || mongoose.model('Dispatch', dispatchSchema);
+const MongooseDispatch = mongoose.models.Dispatch || mongoose.model('Dispatch', dispatchSchema);
+export const Dispatch = createHybridModel(MongooseDispatch, memoryStore.dispatches);

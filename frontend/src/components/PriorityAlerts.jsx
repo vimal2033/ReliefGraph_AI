@@ -166,7 +166,7 @@ export default function PriorityAlerts({
                           ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                           : 'bg-rose-950 text-rose-400 border border-rose-800/60'
                       } font-semibold uppercase tracking-wider`}>
-                        {alert.conflictType?.replace('_', ' ') || 'DEFICIT'}
+                        {alert.conflictType?.replaceAll('_', ' ') || 'DEFICIT'}
                       </span>
                     </div>
                   </div>

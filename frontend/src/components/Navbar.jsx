@@ -17,7 +17,7 @@ export default function Navbar({ onOpenIngest, onRunSimulation, isSimulating }) 
                 ReliefGraph AI
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800/60 uppercase tracking-widest">
-                Gemini 2.5
+                Gemini Flash
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono">

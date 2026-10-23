@@ -35,8 +35,11 @@ function createCustomIcon(status) {
 function MapUpdater({ shelters }) {
   const map = useMap();
   useEffect(() => {
-    if (shelters && shelters.length > 0) {
-      const bounds = L.latLngBounds(shelters.map((s) => [s.coordinates.lat, s.coordinates.lng]));
+    const valid = (shelters || []).filter(
+      (s) => s.coordinates && typeof s.coordinates.lat === 'number' && typeof s.coordinates.lng === 'number'
+    );
+    if (valid.length > 0) {
+      const bounds = L.latLngBounds(valid.map((s) => [s.coordinates.lat, s.coordinates.lng]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
   }, [shelters, map]);
@@ -56,7 +59,7 @@ export default function DisasterMap({ shelters, activeFilter, onSelectShelter })
           Tactical Disaster Geospatial View
         </span>
         <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
-          {shelters.length} Shelters Visible
+          {shelters?.length || 0} Shelters Visible
         </span>
         {activeFilter && activeFilter !== 'ALL' && (
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 flex items-center gap-1">
@@ -96,70 +99,74 @@ export default function DisasterMap({ shelters, activeFilter, onSelectShelter })
 
         <MapUpdater shelters={shelters} />
 
-        {shelters?.map((shelter) => (
-          <Marker
-            key={shelter._id}
-            position={[shelter.coordinates.lat, shelter.coordinates.lng]}
-            icon={createCustomIcon(shelter.status)}
-            eventHandlers={{
-              click: () => onSelectShelter && onSelectShelter(shelter),
-            }}
-          >
-            <Popup>
-              <div className="p-1 space-y-2 text-slate-200 min-w-[220px]">
-                <div className="flex items-start justify-between">
-                  <h4 className="font-bold text-sm text-cyan-400 leading-tight">
-                    {shelter.name}
-                  </h4>
-                  <span
-                    className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                      shelter.status === 'CRITICAL'
-                        ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                        : shelter.status === 'WARNING'
-                        ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                        : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    }`}
-                  >
-                    {shelter.status}
-                  </span>
-                </div>
-
-                <p className="text-[11px] text-slate-400 font-mono">
-                  {shelter.zone}
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-800">
-                  <div className="flex items-center space-x-1 text-slate-300">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{shelter.currentHeadcount} / {shelter.capacity}</span>
-                  </div>
-                  <div className="flex items-center space-x-1 text-slate-300">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-mono text-[10px]">{shelter.phone}</span>
-                  </div>
-                </div>
-
-                {shelter.activeNeedsSummary && shelter.activeNeedsSummary.length > 0 && (
-                  <div className="pt-1.5 border-t border-slate-800">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
-                      Critical Needs:
+        {shelters?.map((shelter) => {
+          const lat = shelter.coordinates?.lat ?? 21.195;
+          const lng = shelter.coordinates?.lng ?? 81.300;
+          return (
+            <Marker
+              key={shelter._id || shelter.name}
+              position={[lat, lng]}
+              icon={createCustomIcon(shelter.status)}
+              eventHandlers={{
+                click: () => onSelectShelter && onSelectShelter(shelter),
+              }}
+            >
+              <Popup>
+                <div className="p-1 space-y-2 text-slate-200 min-w-[220px]">
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-bold text-sm text-cyan-400 leading-tight">
+                      {shelter.name}
+                    </h4>
+                    <span
+                      className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                        shelter.status === 'CRITICAL'
+                          ? 'bg-rose-950 text-rose-400 border border-rose-800'
+                          : shelter.status === 'WARNING'
+                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                          : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      }`}
+                    >
+                      {shelter.status}
                     </span>
-                    <div className="flex flex-wrap gap-1">
-                      {shelter.activeNeedsSummary.map((need, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
-                        >
-                          {need}
-                        </span>
-                      ))}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {shelter.zone}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-800">
+                    <div className="flex items-center space-x-1 text-slate-300">
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{shelter.currentHeadcount} / {shelter.capacity}</span>
+                    </div>
+                    <div className="flex items-center space-x-1 text-slate-300">
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-mono text-[10px]">{shelter.phone}</span>
                     </div>
                   </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+
+                  {shelter.activeNeedsSummary && shelter.activeNeedsSummary.length > 0 && (
+                    <div className="pt-1.5 border-t border-slate-800">
+                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                        Critical Needs:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {shelter.activeNeedsSummary.map((need, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
+                          >
+                            {need}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

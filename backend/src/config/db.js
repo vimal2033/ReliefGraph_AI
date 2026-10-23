@@ -1,28 +1,31 @@
 import mongoose from 'mongoose';
 
 export async function connectDB() {
-  const mongoURI = process.env.MONGO_URI || 'mongodb://mongodb:27017/reliefgraph';
-  
-  console.log(`[DB] Attempting connection to MongoDB at: ${mongoURI}`);
+  mongoose.set('bufferCommands', false);
 
-  // Max connection retry loop for docker compose readiness
-  let retries = 5;
-  while (retries > 0) {
+  const envUri = process.env.MONGO_URI;
+  const urisToTry = [];
+  
+  if (envUri) {
+    urisToTry.push(envUri);
+  }
+  if (!urisToTry.includes('mongodb://127.0.0.1:27017/reliefgraph')) {
+    urisToTry.push('mongodb://127.0.0.1:27017/reliefgraph');
+  }
+
+  for (const uri of urisToTry) {
     try {
-      await mongoose.connect(mongoURI, {
-        serverSelectionTimeoutMS: 5000,
+      console.log(`[DB] Attempting connection to MongoDB at: ${uri}`);
+      await mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 600,
       });
       console.log('[DB] MongoDB Connected Successfully.');
       return true;
     } catch (err) {
-      retries -= 1;
-      console.warn(`[DB] Connection attempt failed (${5 - retries}/5): ${err.message}`);
-      if (retries === 0) {
-        console.error('[DB] Could not connect to MongoDB after retries. Operating in hybrid memory-cache mode.');
-        return false;
-      }
-      await new Promise((res) => setTimeout(res, 2000));
+      console.warn(`[DB] Could not connect to ${uri}: ${err.message}`);
     }
   }
+
+  console.log('[DB] Operating in resilient memory mode (zero-dependency local storage).');
   return false;
 }
