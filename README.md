@@ -16,10 +16,10 @@ During disasters (floods, cyclones), conventional relief dashboards suffer from 
 ## ⚡ Key Features
 
 - 🧠 **Gemini Causal Contradiction Engine:** Automatically flags mismatches between dispatch paperwork and on-ground field realities.
-- 🚚 **Gemini Smart Logistics Re-Routing Advisor:** Dynamic surplus-to-deficit optimization that identifies safe bypass routes and nearby surplus hubs (e.g., Nehru Stadium) to re-route critical supplies, saving 2+ hours of transit delay.
+- 🚚 **Gemini Smart Logistics Re-Routing Advisor:** Dynamic surplus-to-deficit optimization that identifies safe bypass routes and nearby surplus hubs (e.g., Nehru Stadium) to re-route critical supplies, saving 2+ hours of transit delay and dynamically replenishing on-site stock meters.
 - 🗺️ **Interactive Geospatial Map:** Leaflet-powered situational map with pulsing crisis markers, live shelter occupancy, and sector status filters.
-- 🕸️ **Relief Knowledge Graph:** Semantic visualization powered by Vis-network showing Shelter $\leftrightarrow$ Need $\leftrightarrow$ Dispatch relationships with highlighted `CONFLICTS_WITH` edges.
-- 📋 **Tactical Shelter Drill-Down Drawer:** Real-time stock meters (Drinking Water, Food, Medical, Baby Care), live headcount vs. capacity, and ground coordinator contact.
+- 🕸️ **Relief Knowledge Graph:** Semantic visualization powered by Vis-network showing Shelter $\leftrightarrow$ Need $\leftrightarrow$ Dispatch relationships with highlighted `CONFLICTS_WITH` and `UNMET_CRISIS` edges.
+- 📋 **Tactical Shelter Drill-Down Drawer:** Real-time stock meters (Drinking Water, Food, Medical, Baby Care), live headcount vs. capacity, and ground coordinator contact with live state synchronization.
 - 🌐 **Multilingual Ingestion:** Ingests unstructured volunteer and victim reports in English, Hindi, and Hinglish.
 - 🛡️ **Zero-Dependency Resilient Fallback:** Runs seamlessly whether MongoDB is running in Docker, locally, or completely offline via our built-in in-memory engine.
 
@@ -38,6 +38,7 @@ During disasters (floods, cyclones), conventional relief dashboards suffer from 
     └──────────┬───────────┘               └──────────┬───────────┘
                │                                      │
                └──────────────────┬───────────────────┘
+                                  │
                                   ▼
                  ┌─────────────────────────────────┐
                  │  Chronological Timeline Audit   │
@@ -141,7 +142,7 @@ GEMINI_MODEL=gemini-3.8-flash
 4. **Smart Logistics Re-Routing:**
    - Click **"Re-dispatch"** on any active crisis alert.
    - The **Gemini Smart Logistics Re-routing Advisor** modal opens, comparing standard warehouse dispatch (sub-optimal, submerged routes) against dynamic re-routing from a surplus staging hub (saving 138 minutes).
-   - Click **"Approve & Execute AI Re-route"** to dispatch the expedited response.
+   - Click **"Approve & Execute AI Re-route"** to dispatch the expedited response and observe the on-site resource meters immediately replenish.
 
 5. **Interactive Tactical Views:**
    - **Geospatial Map:** Switch between sectors on Leaflet map with pulsing red pins. Click any pin to open the tactical drill-down drawer showing live resource meters and shelter capacity.

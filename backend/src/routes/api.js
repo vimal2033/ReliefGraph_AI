@@ -71,8 +71,18 @@ router.post('/alerts/:id/resolve', async (req, res) => {
       status: 'ACTIVE_UNRESOLVED',
     });
 
-    if (remaining === 0) {
-      await Shelter.findByIdAndUpdate(alert.shelterId, { status: 'STABLE' });
+    const shelter = await Shelter.findById(alert.shelterId);
+    if (shelter) {
+      if (remaining === 0) {
+        shelter.status = 'STABLE';
+      }
+      // Remove resolved requirement from active summary
+      if (shelter.activeNeedsSummary && Array.isArray(shelter.activeNeedsSummary)) {
+        shelter.activeNeedsSummary = shelter.activeNeedsSummary.filter(
+          (needText) => !needText.toLowerCase().includes(alert.resourceCategory.toLowerCase())
+        );
+      }
+      await shelter.save();
     }
 
     await Need.updateMany(
@@ -80,7 +90,7 @@ router.post('/alerts/:id/resolve', async (req, res) => {
       { status: 'RESOLVED' }
     );
 
-    return res.json({ success: true, alert });
+    return res.json({ success: true, alert, shelter });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -107,13 +117,22 @@ router.get('/alerts/:id/reroute-plan', async (req, res) => {
     const destinationName = alert.shelterName;
     const category = alert.resourceCategory;
 
+    // Retrieve actual need details if available
+    const matchingNeed = await Need.findOne({
+      shelterId: alert.shelterId,
+      resourceCategory: alert.resourceCategory,
+    });
+
+    const qtyNeeded = matchingNeed?.quantityRequested || 35;
+    const unitNeeded = matchingNeed?.unit || (category === 'WATER' ? 'cans' : (category === 'MEDICAL' ? 'vials' : 'packets'));
+
     const reroutePlan = {
       alertId: alert._id,
       title: alert.title,
       destinationShelter: destinationName,
       resourceCategory: category,
-      quantityNeeded: 35,
-      unit: category === 'WATER' ? 'cans' : (category === 'MEDICAL' ? 'vials' : 'packets'),
+      quantityNeeded: qtyNeeded,
+      unit: unitNeeded,
 
       // Default Depot Logistics
       defaultOption: {
@@ -128,7 +147,7 @@ router.get('/alerts/:id/reroute-plan', async (req, res) => {
       // Gemini AI Recommended Re-route from Surplus Hub
       recommendedOption: {
         sourceName: `${surplusName} (Surplus Staging Base)`,
-        availableSurplus: '35 Units Buffer Stock',
+        availableSurplus: `${qtyNeeded} ${unitNeeded} Buffer Stock`,
         distance: '3.2 km',
         estimatedMinutes: 22,
         formattedEta: '22 minutes',
@@ -137,7 +156,7 @@ router.get('/alerts/:id/reroute-plan', async (req, res) => {
         timeSavedMinutes: 138,
       },
 
-      aiJustification: `Gemini Logistics Copilot Analysis: Rather than dispatching from Central Depot (18.4 km away with high floodwater risk on NH-53), re-routing 35 units from ${surplusName} saves 138 minutes of critical response time. The elevated Ring Road route ensures safe, guaranteed delivery to ${destinationName}.`,
+      aiJustification: `Gemini Logistics Copilot Analysis: Rather than dispatching from Central Depot (18.4 km away with high floodwater risk on NH-53), re-routing ${qtyNeeded} ${unitNeeded} from ${surplusName} saves 138 minutes of critical response time. The elevated Ring Road route ensures safe, guaranteed delivery to ${destinationName}.`,
     };
 
     return res.json(reroutePlan);
@@ -163,13 +182,29 @@ router.post('/alerts/:id/execute-reroute', async (req, res) => {
     alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed supplies from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
     await alert.save();
 
-    // Check remaining active alerts
+    // Check remaining active alerts & replenish on-site stock meter
     const remaining = await Alert.countDocuments({
       shelterId: alert.shelterId,
       status: 'ACTIVE_UNRESOLVED',
     });
-    if (remaining === 0) {
-      await Shelter.findByIdAndUpdate(alert.shelterId, { status: 'WARNING' });
+
+    const shelter = await Shelter.findById(alert.shelterId);
+    if (shelter) {
+      if (remaining === 0) {
+        shelter.status = 'WARNING';
+      }
+
+      // Replenish the corresponding stock health meter
+      const catKey =
+        alert.resourceCategory === 'WATER' ? 'water' :
+        alert.resourceCategory === 'FOOD' ? 'food' :
+        alert.resourceCategory === 'MEDICAL' ? 'medical' :
+        alert.resourceCategory === 'BABY_CARE' ? 'babyCare' : null;
+
+      if (catKey && shelter.stockHealth) {
+        shelter.stockHealth[catKey] = Math.min(100, (shelter.stockHealth[catKey] || 15) + 45);
+      }
+      await shelter.save();
     }
 
     // Create tracking dispatch

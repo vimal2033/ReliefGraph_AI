@@ -37,7 +37,7 @@ export default function IngestionModal({ onClose, onSubmit, isSubmitting }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    onSubmit({ rawText: text, source, senderName });
+    onSubmit({ rawText: text.trim(), source, senderName: senderName.trim() });
   };
 
   const handleApplyPreset = (preset) => {
@@ -114,6 +114,7 @@ export default function IngestionModal({ onClose, onSubmit, isSubmitting }) {
                 <option value="VOLUNTEER">Field Volunteer</option>
                 <option value="SHELTER_MANAGER">Shelter Manager</option>
                 <option value="DISPATCHER">Supply Dispatcher (HQ)</option>
+                <option value="OFFICIAL_LOG">Official NDRF / Govt Log</option>
                 <option value="COMMUNITY">Affected Community</option>
               </select>
             </div>

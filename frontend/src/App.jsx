@@ -84,6 +84,12 @@ export default function App() {
     return result.length > 0 ? result : shelters;
   }, [shelters, activeFilter, selectedShelterName]);
 
+  // Keep open drawer synced with live shelter telemetry
+  const activeDrawerShelter = useMemo(() => {
+    if (!selectedShelterForDrawer) return null;
+    return shelters.find((s) => String(s._id) === String(selectedShelterForDrawer._id)) || selectedShelterForDrawer;
+  }, [shelters, selectedShelterForDrawer]);
+
   // Filtered Telemetry Feed
   const filteredReports = useMemo(() => {
     const list = Array.isArray(reports) ? reports : [];
@@ -381,9 +387,9 @@ export default function App() {
       )}
 
       {/* Shelter Tactical Drill-Down Drawer */}
-      {selectedShelterForDrawer && (
+      {activeDrawerShelter && (
         <ShelterDetailDrawer
-          shelter={selectedShelterForDrawer}
+          shelter={activeDrawerShelter}
           onClose={() => setSelectedShelterForDrawer(null)}
           onOpenReportForShelter={() => {
             setSelectedShelterForDrawer(null);
