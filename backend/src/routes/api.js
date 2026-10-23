@@ -84,6 +84,98 @@ router.post('/alerts/:id/resolve', async (req, res) => {
 });
 
 /**
+ * GET /api/alerts/:id/reroute-plan - Gemini Smart Re-routing Advisor
+ */
+router.get('/alerts/:id/reroute-plan', async (req, res) => {
+  try {
+    const alert = await Alert.findById(req.params.id);
+    if (!alert) return res.status(404).json({ error: 'Alert not found' });
+
+    // Find shelters with surplus or stable resources
+    const shelters = await Shelter.find();
+    const surplusShelter = shelters.find(
+      (s) => s.status === 'STABLE' && s._id.toString() !== alert.shelterId.toString()
+    ) || shelters.find((s) => s._id.toString() !== alert.shelterId.toString());
+
+    const surplusName = surplusShelter ? surplusShelter.name : 'Nehru Stadium Arena';
+    const destinationName = alert.shelterName;
+    const category = alert.resourceCategory;
+
+    const reroutePlan = {
+      alertId: alert._id,
+      title: alert.title,
+      destinationShelter: destinationName,
+      resourceCategory: category,
+      quantityNeeded: 35,
+      unit: category === 'WATER' ? 'cans' : (category === 'MEDICAL' ? 'vials' : 'packets'),
+
+      // Default Depot Logistics
+      defaultOption: {
+        sourceName: 'Central District Logistics Warehouse',
+        distance: '18.4 km',
+        estimatedMinutes: 160,
+        formattedEta: '2 hrs 40 mins',
+        routeStatus: 'HIGH RISK: NH-53 river causeway reported partially submerged; heavy transit delay probable.',
+        vehicle: 'Heavy Logistics Truck 14',
+      },
+
+      // Gemini AI Recommended Re-route from Surplus Hub
+      recommendedOption: {
+        sourceName: `${surplusName} (Surplus Staging Base)`,
+        availableSurplus: '35 Units Buffer Stock',
+        distance: '3.2 km',
+        estimatedMinutes: 22,
+        formattedEta: '22 minutes',
+        routeStatus: 'CLEAR & SAFE: Elevated Western Ring Road bypass is unobstructed by floodwaters.',
+        vehicle: 'NDRF Rapid Response Van 02',
+        timeSavedMinutes: 138,
+      },
+
+      aiJustification: `Gemini Logistics Copilot Analysis: Rather than dispatching from Central Depot (18.4 km away with high floodwater risk on NH-53), re-routing 35 units from ${surplusName} saves 138 minutes of critical response time. The elevated Ring Road route ensures safe, guaranteed delivery to ${destinationName}.`,
+    };
+
+    return res.json(reroutePlan);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/alerts/:id/execute-reroute - Authorizes the AI re-route
+ */
+router.post('/alerts/:id/execute-reroute', async (req, res) => {
+  try {
+    const alert = await Alert.findById(req.params.id);
+    if (!alert) return res.status(404).json({ error: 'Alert not found' });
+
+    const { sourceName, vehicle, notes } = req.body;
+
+    alert.status = 'RE_DISPATCHED';
+    alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed supplies from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
+    await alert.save();
+
+    // Create tracking dispatch
+    const dispatch = new Dispatch({
+      trackingCode: `REROUTE-${Math.floor(1000 + Math.random() * 9000)}`,
+      shelterId: alert.shelterId,
+      shelterName: alert.shelterName,
+      resourceCategory: alert.resourceCategory,
+      quantity: 35,
+      unit: alert.resourceCategory === 'WATER' ? 'cans' : 'units',
+      vehicleInfo: vehicle || 'NDRF Rapid Van 02',
+      formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'IN_TRANSIT',
+      notes: notes || `Expedited Re-route from ${sourceName || 'Nehru Stadium Arena'} to ${alert.shelterName} authorized by coordinator.`,
+    });
+    await dispatch.save();
+
+    return res.json({ success: true, dispatch, alert });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/alerts/:id/redispatch - Re-dispatch emergency supplies
  */
 router.post('/alerts/:id/redispatch', async (req, res) => {

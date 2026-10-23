@@ -6,6 +6,8 @@ import DisasterMap from './components/DisasterMap';
 import ReliefKnowledgeGraph from './components/ReliefKnowledgeGraph';
 import EvidenceTimelineModal from './components/EvidenceTimelineModal';
 import IngestionModal from './components/IngestionModal';
+import SmartRerouteModal from './components/SmartRerouteModal';
+import ShelterDetailDrawer from './components/ShelterDetailDrawer';
 import { api } from './services/api';
 import { MapPin, Share2, Radio, Filter, CheckCircle2 } from 'lucide-react';
 
@@ -26,6 +28,11 @@ export default function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
+
+  // New Features: Smart Re-routing & Shelter Tactical Drawer
+  const [reroutePlan, setReroutePlan] = useState(null);
+  const [isSubmittingReroute, setIsSubmittingReroute] = useState(false);
+  const [selectedShelterForDrawer, setSelectedShelterForDrawer] = useState(null);
 
   // Load dashboard data
   const loadDashboardData = async () => {
@@ -130,12 +137,43 @@ export default function App() {
     }
   };
 
-  const handleRedispatchAlert = async (alertId) => {
+  // Triggers Gemini Smart Re-routing Advisor Modal
+  const handleOpenRerouteAdvisor = async (alertId) => {
+    try {
+      const plan = await api.getReroutePlan(alertId);
+      setReroutePlan(plan);
+    } catch (err) {
+      console.error('Error fetching reroute plan:', err);
+    }
+  };
+
+  const handleExecuteReroute = async (plan) => {
+    setIsSubmittingReroute(true);
+    try {
+      await api.executeReroute(plan.alertId, {
+        sourceName: plan.recommendedOption.sourceName,
+        vehicle: plan.recommendedOption.vehicle,
+        notes: plan.aiJustification,
+      });
+      setReroutePlan(null);
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Execute reroute error:', err);
+    } finally {
+      setIsSubmittingReroute(false);
+    }
+  };
+
+  const handleStandardRedispatch = async (alertId) => {
+    setIsSubmittingReroute(true);
     try {
       await api.redispatchAlert(alertId);
+      setReroutePlan(null);
       await loadDashboardData();
     } catch (err) {
       console.error('Redispatch alert error:', err);
+    } finally {
+      setIsSubmittingReroute(false);
     }
   };
 
@@ -210,7 +248,7 @@ export default function App() {
                 onSelectFilter={handleSelectFilter}
                 onSelectAlert={(a) => setSelectedAlert(a)}
                 onResolveAlert={handleResolveAlert}
-                onRedispatchAlert={handleRedispatchAlert}
+                onRedispatchAlert={handleOpenRerouteAdvisor}
                 resolvingId={resolvingId}
               />
             </div>
@@ -273,7 +311,7 @@ export default function App() {
 
               <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
                 {activeTab === 'MAP'
-                  ? `${filteredShelters.length} Shelters displayed`
+                  ? `${filteredShelters.length} Shelters displayed • Click pin for tactical drawer`
                   : 'Relational Graph Nodes & Edges'}
               </span>
             </div>
@@ -284,7 +322,10 @@ export default function App() {
                 <DisasterMap
                   shelters={filteredShelters}
                   activeFilter={activeFilter}
-                  onSelectShelter={(shelter) => setSelectedShelterName(shelter.name)}
+                  onSelectShelter={(shelter) => {
+                    setSelectedShelterName(shelter.name);
+                    setSelectedShelterForDrawer(shelter);
+                  }}
                 />
               ) : (
                 <ReliefKnowledgeGraph
@@ -305,12 +346,12 @@ export default function App() {
         Google Gemini Hackathon 2026 • Track: Society & Well-being • Team Cipher (BIT Durg: Vimal Mishra, Abhishek Dewangan, Vandana Sahu, Manish Kumar)
       </footer>
 
-      {/* Modals - Rendered at top level with z-[9999] isolation */}
+      {/* Modals & Drawers - Rendered via React Portal directly into body */}
       <EvidenceTimelineModal
         alert={selectedAlert}
         onClose={() => setSelectedAlert(null)}
         onResolve={handleResolveAlert}
-        onRedispatch={handleRedispatchAlert}
+        onRedispatch={handleOpenRerouteAdvisor}
       />
 
       {isIngestOpen && (
@@ -318,6 +359,29 @@ export default function App() {
           onClose={() => setIsIngestOpen(false)}
           onSubmit={handleSubmitReport}
           isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* Gemini Smart Logistics Re-routing Advisor Modal */}
+      {reroutePlan && (
+        <SmartRerouteModal
+          plan={reroutePlan}
+          onClose={() => setReroutePlan(null)}
+          onExecuteReroute={handleExecuteReroute}
+          onStandardRedispatch={handleStandardRedispatch}
+          isSubmitting={isSubmittingReroute}
+        />
+      )}
+
+      {/* Shelter Tactical Drill-Down Drawer */}
+      {selectedShelterForDrawer && (
+        <ShelterDetailDrawer
+          shelter={selectedShelterForDrawer}
+          onClose={() => setSelectedShelterForDrawer(null)}
+          onOpenReportForShelter={(sh) => {
+            setSelectedShelterForDrawer(null);
+            setIsIngestOpen(true);
+          }}
         />
       )}
     </div>

@@ -19,6 +19,12 @@ const shelterSchema = new mongoose.Schema(
       default: 'STABLE',
     },
     activeNeedsSummary: [{ type: String }],
+    stockHealth: {
+      water: { type: Number, default: 75 },
+      food: { type: Number, default: 70 },
+      medical: { type: Number, default: 80 },
+      babyCare: { type: Number, default: 60 },
+    },
   },
   { timestamps: true }
 );

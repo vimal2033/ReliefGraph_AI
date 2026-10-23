@@ -12,6 +12,12 @@ export const DEFAULT_SHELTERS = [
     phone: '+91-98271-12001',
     status: 'CRITICAL',
     activeNeedsSummary: ['Drinking Water', 'Baby Formula'],
+    stockHealth: {
+      water: 12, // Critical deficit
+      food: 55,
+      medical: 70,
+      babyCare: 10,
+    },
   },
   {
     name: 'Central Hospital Shelter',
@@ -24,6 +30,12 @@ export const DEFAULT_SHELTERS = [
     phone: '+91-98271-12002',
     status: 'CRITICAL',
     activeNeedsSummary: ['Insulin Vials', 'Antiseptic Dressings'],
+    stockHealth: {
+      water: 80,
+      food: 65,
+      medical: 18, // Critical insulin shortage
+      babyCare: 60,
+    },
   },
   {
     name: 'St. Jude Community Hall',
@@ -35,7 +47,13 @@ export const DEFAULT_SHELTERS = [
     contactPerson: 'Sister Mary (Volunteer Coordinator)',
     phone: '+91-98271-12003',
     status: 'WARNING',
-    activeNeedsSummary: ['Cooked Meals', 'Dry Rations'],
+    activeNeedsSummary: ['Cooked Meals', 'Infant Formula'],
+    stockHealth: {
+      water: 65,
+      food: 25, // Uncooked grains incompatible
+      medical: 50,
+      babyCare: 8, // Urgent infant formula need
+    },
   },
   {
     name: 'East Embankment Relief Camp',
@@ -48,6 +66,12 @@ export const DEFAULT_SHELTERS = [
     phone: '+91-98271-12004',
     status: 'WARNING',
     activeNeedsSummary: ['Waterproof Tents', 'Blankets'],
+    stockHealth: {
+      water: 45,
+      food: 50,
+      medical: 40,
+      babyCare: 35,
+    },
   },
   {
     name: 'Nehru Stadium Arena',
@@ -59,12 +83,18 @@ export const DEFAULT_SHELTERS = [
     contactPerson: 'Capt. S. Sengupta (NDRF Liaison)',
     phone: '+91-98271-12005',
     status: 'STABLE',
-    activeNeedsSummary: ['Clean Drinking Water'],
+    activeNeedsSummary: ['Clean Drinking Water (Surplus)'],
+    stockHealth: {
+      water: 95, // Surplus +35 cans available
+      food: 90, // Surplus cooked rations
+      medical: 85,
+      babyCare: 80,
+    },
   },
 ];
 
 /**
- * Initializes default shelters in MongoDB if empty
+ * Initializes default shelters in MongoDB if empty or updates them
  */
 export async function ensureDefaultShelters() {
   try {
@@ -73,9 +103,17 @@ export async function ensureDefaultShelters() {
       console.log('[Matching Service] Seeding default disaster relief shelters...');
       await Shelter.insertMany(DEFAULT_SHELTERS);
       console.log('[Matching Service] 5 default disaster shelters seeded.');
+    } else {
+      // Update existing shelters to ensure stockHealth is present
+      for (const def of DEFAULT_SHELTERS) {
+        await Shelter.updateOne(
+          { normalizedName: def.normalizedName },
+          { $set: { stockHealth: def.stockHealth } }
+        );
+      }
     }
   } catch (err) {
-    console.warn('[Matching Service] Shelter count/seed error (DB might be starting):', err.message);
+    console.warn('[Matching Service] Shelter count/seed error:', err.message);
   }
 }
 
@@ -109,7 +147,6 @@ export async function matchLocationToShelter(locationName) {
       }
     }
 
-    // Default to the first shelter if nothing matches
     return shelters[0];
   } catch (err) {
     console.error('[Matching Service] Error querying shelters:', err.message);
