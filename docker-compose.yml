@@ -1,0 +1,60 @@
+services:
+  # Database Service
+  mongodb:
+    image: mongo:7.0
+    container_name: reliefgraph-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - relief_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Backend API Service (Google Gemini Reasoning Engine)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reliefgraph-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/reliefgraph
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=gemini-2.5-flash
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - relief_network
+
+  # Frontend Web UI (Tactical Command Center)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reliefgraph-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - relief_network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  relief_network:
+    driver: bridge
