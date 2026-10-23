@@ -25,6 +25,19 @@ During disasters (floods, cyclones), conventional relief dashboards suffer from 
 
 ---
 
+## 📚 System Documentation & Architecture Specs
+
+Comprehensive technical engineering specifications are available in the [`docs/`](docs/README.md) directory:
+
+- 📋 **[Software Requirements Specification (SRS)](docs/SRS.md):** Complete IEEE 830 functional/non-functional requirements, user personas, interface specs, and validation matrix.
+- 🔄 **[Data Flow Diagrams (DFD)](docs/DFD.md):** Level 0 (Context Diagram), Level 1 (High-Level Process Decomposition), Level 2 (Sub-process Flows), and comprehensive Data Dictionary.
+- 🏗️ **[System Architecture & Design](docs/ARCHITECTURE.md):** Tier topologies, failover mechanisms, sequence flows, AI pipelines, and resilience models.
+- 📡 **[Full REST API Documentation](docs/API_DOCUMENTATION.md):** Detailed endpoint parameters, request/response JSON schemas, and test cURL commands.
+- 🗄️ **[Database Schema & Models](docs/DATABASE_SCHEMA.md):** Entity relationship diagrams, collections, indexes, and hybrid in-memory store mappings.
+- 🚀 **[Deployment & Operations Guide](docs/DEPLOYMENT_GUIDE.md):** Local offline setup, Docker Compose multi-container instructions, and troubleshooting.
+
+---
+
 ## 🏗️ System Architecture
 
 ```
@@ -189,6 +202,14 @@ GEMINI_MODEL=gemini-3.8-flash
 
 ```
 ReliefGraph_AI/
+├── docs/                    # Complete Engineering & System Specifications
+│   ├── README.md            # Documentation Directory & Index
+│   ├── SRS.md               # IEEE 830 Software Requirements Specification
+│   ├── DFD.md               # Level 0, 1, 2 Data Flow Diagrams & Data Dictionary
+│   ├── ARCHITECTURE.md      # High-Level Architecture, Components & Sequence Flows
+│   ├── API_DOCUMENTATION.md # REST Endpoints, Payloads & cURL Examples
+│   ├── DATABASE_SCHEMA.md   # Data Models, Schemas, & Hybrid Store Specs
+│   └── DEPLOYMENT_GUIDE.md  # Docker & Local Offline Execution Guide
 ├── backend/
 │   ├── src/
 │   │   ├── config/          # Gemini AI client & DB connection (with memory fallback)
