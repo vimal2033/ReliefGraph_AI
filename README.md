@@ -25,6 +25,45 @@ During disasters (floods, cyclones), conventional relief dashboards suffer from 
 
 ---
 
+## 🏗️ System Architecture
+
+```
+[ Multilingual Field Telemetry ]       [ Official HQ Logistics ]
+ (WhatsApp / SMS / Social Feeds)       (Vehicle Dispatches & Manifests)
+               │                                      │
+               ▼                                      ▼
+    ┌──────────────────────┐               ┌──────────────────────┐
+    │ Google Gemini Engine │               │ Dispatch Tracker Log │
+    │ (Entity Extraction)  │               │ (Vehicle / Cans / Qty│
+    └──────────┬───────────┘               └──────────┬───────────┘
+               │                                      │
+               └──────────────────┬───────────────────┘
+                                  ▼
+                 ┌─────────────────────────────────┐
+                 │  Chronological Timeline Audit   │
+                 │   (Matching Shelter & Needs)    │
+                 └────────────────┬────────────────┘
+                                  │
+                                  ▼
+                 ┌─────────────────────────────────┐
+                 │   Gemini Contradiction Engine   │
+                 │   - Delivery vs Distress Audit  │
+                 │   - Quantity Mismatch Detection │
+                 │   - Surplus Re-routing Advisor  │
+                 └────────────────┬────────────────┘
+                                  │
+         ┌────────────────────────┴────────────────────────┐
+         ▼                                                 ▼
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│ Tactical Command Dashboard   │        │ Relief Knowledge Graph       │
+│ - Leaflet Geospatial View    │        │ - Vis-network Semantic Edges │
+│ - Evidence Audit Drawer      │        │ - Conflict Edge Highlight    │
+│ - Smart Re-route Approvals   │        │ - Dynamic Surplus Nodes      │
+└──────────────────────────────┘        └──────────────────────────────┘
+```
+
+---
+
 ## 🚀 Quick Start (Dockerized)
 
 Ensure **Docker Desktop** is running, then in the project root folder run:
@@ -111,6 +150,55 @@ GEMINI_MODEL=gemini-3.8-flash
 6. **Live Ingestion Test:**
    - Click **"Submit Report"** in the top navbar.
    - Type any natural language field report (English / Hindi / Hinglish) or click one of the quick presets to watch Gemini extract structured entities and re-evaluate contradictions in real time.
+
+---
+
+## 📡 REST API Reference
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | `GET` | Core engine status & uptime healthcheck |
+| `/api/stats` | `GET` | High-level metrics (unresolved, unverified, total reports) |
+| `/api/alerts` | `GET` | Active & historical contradiction alerts |
+| `/api/alerts/:id/resolve` | `POST` | Coordinator marks alert as verified & resolved |
+| `/api/alerts/:id/reroute-plan` | `GET` | Gemini AI surplus-to-deficit re-routing comparison |
+| `/api/alerts/:id/execute-reroute` | `POST` | Approves and authorizes the AI re-routing plan |
+| `/api/alerts/:id/redispatch` | `POST` | Standard emergency re-dispatch dispatch log |
+| `/api/shelters` | `GET` | Monitored disaster shelters with stock health & coordinates |
+| `/api/reports` | `GET` | Ingested telemetry feed with filters and pagination |
+| `/api/reports` | `POST` | Ingests raw unstructured text via Gemini extraction pipeline |
+| `/api/graph` | `GET` | Nodes and semantic conflict edges for Vis-network |
+| `/api/simulation/run` | `POST` | Resets state and ingests benchmark flood disaster scenario |
+
+---
+
+## 📂 Project Structure
+
+```
+ReliefGraph_AI/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # Gemini AI client & DB connection (with memory fallback)
+│   │   ├── models/          # Shelter, Need, Dispatch, Report, Alert models
+│   │   ├── routes/          # Express API route endpoints
+│   │   └── services/        # Extraction, Contradiction, Simulation, & Memory Store
+│   ├── server.js            # Express server entry point
+│   ├── Dockerfile           # Production container build
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # Map, Knowledge Graph, Drawer, Modals, Navbar, Alerts
+│   │   ├── data/            # Fallback offline datasets
+│   │   ├── services/        # Axios API client
+│   │   ├── App.jsx          # Tactical command center layout & state
+│   │   └── main.jsx
+│   ├── nginx.conf           # Reverse proxy configuration
+│   ├── Dockerfile           # Multi-stage Vite + Nginx build
+│   └── package.json
+├── docker-compose.yml       # 1-click orchestration
+├── .env.example             # Configuration template
+└── README.md
+```
 
 ---
 
