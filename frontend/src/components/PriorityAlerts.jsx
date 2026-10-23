@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ChevronRight, Truck, Check, HelpCircle, Search, Filter, Sparkles, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Truck, Check, HelpCircle, Search, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function PriorityAlerts({
-  alerts,
+  alerts = [],
   activeFilter,
   onSelectFilter,
   onSelectAlert,
@@ -13,7 +13,8 @@ export default function PriorityAlerts({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter alerts according to activeFilter & search query
-  const filteredAlerts = alerts.filter((alert) => {
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const filteredAlerts = safeAlerts.filter((alert) => {
     // 1. Filter by Status/Category
     if (activeFilter === 'UNRESOLVED') {
       if (alert.status !== 'ACTIVE_UNRESOLVED') return false;
@@ -144,7 +145,7 @@ export default function PriorityAlerts({
 
             return (
               <div
-                key={alert._id}
+                key={alert._id || alert.title}
                 className={`bg-slate-900/90 border ${
                   isResolved
                     ? 'border-emerald-800/40 hover:border-emerald-500/50'

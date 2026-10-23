@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Users, Phone, MapPin, AlertTriangle, ShieldCheck, Droplets, Utensils, HeartPulse, Baby, PlusCircle, ExternalLink } from 'lucide-react';
+import { X, Users, Phone, Droplets, Utensils, HeartPulse, Baby, PlusCircle } from 'lucide-react';
 
 export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForShelter }) {
   if (!shelter) return null;
@@ -16,7 +16,9 @@ export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForS
     babyCare: isCritical ? 10 : 65,
   };
 
-  const occupancyPercent = Math.min(100, Math.round((shelter.currentHeadcount / shelter.capacity) * 100));
+  const capacity = shelter.capacity || 250;
+  const currentHeadcount = shelter.currentHeadcount || 0;
+  const occupancyPercent = Math.min(100, Math.max(0, Math.round((currentHeadcount / capacity) * 100)));
 
   const getMeterColor = (val) => {
     if (val < 25) return { bg: 'bg-rose-500', text: 'text-rose-400', label: 'CRITICAL DEFICIT' };
@@ -45,7 +47,7 @@ export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForS
                     : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                 }`}
               >
-                {shelter.status} SECTOR
+                {shelter.status || 'ACTIVE'} SECTOR
               </span>
               <span className="text-xs font-mono text-slate-400">
                 {shelter.zone}
@@ -76,7 +78,7 @@ export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForS
                 Live Occupancy / Capacity
               </span>
               <span className="text-cyan-400 font-bold">
-                {shelter.currentHeadcount} / {shelter.capacity} ({occupancyPercent}%)
+                {currentHeadcount} / {capacity} ({occupancyPercent}%)
               </span>
             </div>
 
@@ -90,7 +92,7 @@ export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForS
               />
             </div>
             <p className="text-[11px] text-slate-400 font-mono">
-              {shelter.capacity - shelter.currentHeadcount} bed slots available before overflow.
+              {Math.max(0, capacity - currentHeadcount)} bed slots available before overflow.
             </p>
           </div>
 
@@ -205,13 +207,13 @@ export default function ShelterDetailDrawer({ shelter, onClose, onOpenReportForS
               On-Ground Station Contact:
             </span>
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-200">{shelter.contactPerson}</span>
+              <span className="font-semibold text-slate-200">{shelter.contactPerson || 'Station Manager'}</span>
               <a
-                href={`tel:${shelter.phone}`}
+                href={`tel:${shelter.phone || '+91-98765-43210'}`}
                 className="flex items-center space-x-1 font-mono text-cyan-400 hover:underline"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span>{shelter.phone}</span>
+                <span>{shelter.phone || '+91-98765-43210'}</span>
               </a>
             </div>
           </div>

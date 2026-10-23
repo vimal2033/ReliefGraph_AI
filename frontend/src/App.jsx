@@ -9,7 +9,7 @@ import IngestionModal from './components/IngestionModal';
 import SmartRerouteModal from './components/SmartRerouteModal';
 import ShelterDetailDrawer from './components/ShelterDetailDrawer';
 import { api } from './services/api';
-import { MapPin, Share2, Radio, Filter, CheckCircle2 } from 'lucide-react';
+import { MapPin, Share2, Radio } from 'lucide-react';
 
 export default function App() {
   const [stats, setStats] = useState(null);
@@ -29,7 +29,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
 
-  // New Features: Smart Re-routing & Shelter Tactical Drawer
+  // Smart Re-routing & Shelter Tactical Drawer
   const [reroutePlan, setReroutePlan] = useState(null);
   const [isSubmittingReroute, setIsSubmittingReroute] = useState(false);
   const [selectedShelterForDrawer, setSelectedShelterForDrawer] = useState(null);
@@ -42,13 +42,13 @@ export default function App() {
         api.getAlerts(),
         api.getShelters(),
         api.getGraph(),
-        api.getReports(15),
+        api.getReports(25),
       ]);
       setStats(sData);
-      setAlerts(aData);
-      setShelters(shData);
-      setGraphData(gData);
-      setReports(rData);
+      setAlerts(Array.isArray(aData) ? aData : []);
+      setShelters(Array.isArray(shData) ? shData : []);
+      setGraphData(gData || { nodes: [], edges: [] });
+      setReports(Array.isArray(rData) ? rData : []);
     } catch (err) {
       console.warn('Dashboard data fetch warning:', err);
     }
@@ -86,16 +86,17 @@ export default function App() {
 
   // Filtered Telemetry Feed
   const filteredReports = useMemo(() => {
+    const list = Array.isArray(reports) ? reports : [];
     if (activeFilter === 'UNRESOLVED') {
-      return reports.filter((r) => r.extracted?.urgency === 'CRITICAL' || r.extracted?.urgency === 'HIGH');
+      return list.filter((r) => r.extracted?.urgency === 'CRITICAL' || r.extracted?.urgency === 'HIGH');
     }
     if (activeFilter === 'UNVERIFIED') {
-      return reports.filter((r) => r.extracted?.isDispatch || r.source === 'DISPATCHER');
+      return list.filter((r) => r.extracted?.isDispatch || r.source === 'DISPATCHER');
     }
     if (activeFilter === 'RESOLVED') {
-      return reports.filter((r) => r.status === 'VERIFIED');
+      return list.filter((r) => r.status === 'VERIFIED');
     }
-    return reports;
+    return list;
   }, [reports, activeFilter]);
 
   // Filtered Graph Data
@@ -265,15 +266,21 @@ export default function App() {
                 </span>
               </div>
               <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                {filteredReports.map((r) => (
-                  <div key={r._id} className="text-[11px] p-2 rounded bg-slate-900 border border-slate-800">
-                    <div className="flex items-center justify-between mb-0.5 text-[10px] text-slate-400 font-mono">
-                      <span className="text-cyan-400 font-semibold">{r.senderName}</span>
-                      <span>{r.formattedTime}</span>
+                {filteredReports.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic p-2 text-center">
+                    No field reports matching current filter.
+                  </p>
+                ) : (
+                  filteredReports.map((r, idx) => (
+                    <div key={r._id || `report_${idx}`} className="text-[11px] p-2 rounded bg-slate-900 border border-slate-800">
+                      <div className="flex items-center justify-between mb-0.5 text-[10px] text-slate-400 font-mono">
+                        <span className="text-cyan-400 font-semibold">{r.senderName}</span>
+                        <span>{r.formattedTime}</span>
+                      </div>
+                      <p className="text-slate-300 italic line-clamp-1">"{r.rawText}"</p>
                     </div>
-                    <p className="text-slate-300 italic line-clamp-1">"{r.rawText}"</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -343,10 +350,10 @@ export default function App() {
 
       {/* Footer / Team Credits */}
       <footer className="border-t border-slate-800/80 bg-dark-900 py-3 mt-4 text-center text-xs text-slate-500 font-mono">
-        Google Gemini Hackathon 2026 • Track: Society & Well-being • Team Cipher (BIT Durg: Vimal Mishra, Abhishek Dewangan, Vandana Sahu, Manish Kumar)
+        Google Gemini Hackathon 2026 • Track: Society & Well-being • Team Cipher (BIT Durg: Vimal Mishra, Ritu Mishra, Abhishek Dewangan, Vandana Sahu, Manish Kumar)
       </footer>
 
-      {/* Modals & Drawers - Rendered via React Portal directly into body */}
+      {/* Modals & Drawers */}
       <EvidenceTimelineModal
         alert={selectedAlert}
         onClose={() => setSelectedAlert(null)}
@@ -378,7 +385,7 @@ export default function App() {
         <ShelterDetailDrawer
           shelter={selectedShelterForDrawer}
           onClose={() => setSelectedShelterForDrawer(null)}
-          onOpenReportForShelter={(sh) => {
+          onOpenReportForShelter={() => {
             setSelectedShelterForDrawer(null);
             setIsIngestOpen(true);
           }}

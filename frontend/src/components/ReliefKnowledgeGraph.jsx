@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Network } from 'vis-network';
-import { Share2, RefreshCw, Layers } from 'lucide-react';
+import { Share2, RefreshCw } from 'lucide-react';
 
 export default function ReliefKnowledgeGraph({ graphData, onRefresh }) {
   const containerRef = useRef(null);
@@ -65,15 +65,22 @@ export default function ReliefKnowledgeGraph({ graphData, onRefresh }) {
       },
     };
 
-    networkRef.current = new Network(containerRef.current, { nodes, edges }, options);
+    if (!networkRef.current) {
+      networkRef.current = new Network(containerRef.current, { nodes, edges }, options);
+    } else {
+      networkRef.current.setData({ nodes, edges });
+    }
+  }, [graphData]);
 
+  // Clean teardown only on unmount
+  useEffect(() => {
     return () => {
       if (networkRef.current) {
         networkRef.current.destroy();
         networkRef.current = null;
       }
     };
-  }, [graphData]);
+  }, []);
 
   return (
     <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden border border-slate-800 shadow-xl bg-dark-900 flex flex-col">

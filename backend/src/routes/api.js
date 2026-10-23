@@ -56,7 +56,10 @@ router.get('/alerts', async (req, res) => {
  */
 router.post('/alerts/:id/resolve', async (req, res) => {
   try {
-    const alert = await Alert.findById(req.params.id);
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Alert ID is required' });
+
+    const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
     alert.status = 'VERIFIED_RESOLVED';
@@ -88,7 +91,10 @@ router.post('/alerts/:id/resolve', async (req, res) => {
  */
 router.get('/alerts/:id/reroute-plan', async (req, res) => {
   try {
-    const alert = await Alert.findById(req.params.id);
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Alert ID is required' });
+
+    const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
     // Find shelters with surplus or stable resources
@@ -145,10 +151,13 @@ router.get('/alerts/:id/reroute-plan', async (req, res) => {
  */
 router.post('/alerts/:id/execute-reroute', async (req, res) => {
   try {
-    const alert = await Alert.findById(req.params.id);
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Alert ID is required' });
+
+    const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
-    const { sourceName, vehicle, notes } = req.body;
+    const { sourceName, vehicle, notes } = req.body || {};
 
     alert.status = 'RE_DISPATCHED';
     alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed supplies from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
@@ -189,7 +198,10 @@ router.post('/alerts/:id/execute-reroute', async (req, res) => {
  */
 router.post('/alerts/:id/redispatch', async (req, res) => {
   try {
-    const alert = await Alert.findById(req.params.id);
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Alert ID is required' });
+
+    const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
     alert.status = 'RE_DISPATCHED';
@@ -242,7 +254,7 @@ router.get('/shelters', async (req, res) => {
  */
 router.get('/reports', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 50;
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const reports = await Report.find().sort({ createdAt: -1 }).limit(limit);
     return res.json(reports);
   } catch (err) {
@@ -255,13 +267,14 @@ router.get('/reports', async (req, res) => {
  */
 router.post('/reports', async (req, res) => {
   try {
-    const { rawText, source, senderName } = req.body;
-    if (!rawText) {
-      return res.status(400).json({ error: 'rawText is required' });
+    const { rawText, source, senderName } = req.body || {};
+    if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
+      return res.status(400).json({ error: 'rawText is required and must be a non-empty string' });
     }
 
+    const cleanedText = rawText.trim();
     const formattedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const extracted = await extractReportEntities(rawText, source || 'VOLUNTEER');
+    const extracted = await extractReportEntities(cleanedText, source || 'VOLUNTEER');
     const matchedShelter = await matchLocationToShelter(extracted.location);
 
     if (matchedShelter) {
@@ -270,7 +283,7 @@ router.post('/reports', async (req, res) => {
     }
 
     const reportDoc = new Report({
-      rawText,
+      rawText: cleanedText,
       source: source || 'VOLUNTEER',
       senderName: senderName || 'Field Reporter',
       formattedTime,
@@ -292,7 +305,7 @@ router.post('/reports', async (req, res) => {
           vehicleInfo: senderName || 'Logistics Van',
           formattedTime,
           status: 'IN_TRANSIT',
-          notes: rawText,
+          notes: cleanedText,
         });
         await dispatchDoc.save();
       } else {
@@ -316,8 +329,8 @@ router.post('/reports', async (req, res) => {
               {
                 formattedTime,
                 eventType: 'REQUEST_CREATED',
-                description: rawText,
-                sourceQuote: rawText,
+                description: cleanedText,
+                sourceQuote: cleanedText,
                 author: senderName || 'Field Reporter',
               },
             ],
@@ -327,8 +340,8 @@ router.post('/reports', async (req, res) => {
           need.timeline.push({
             formattedTime,
             eventType: 'FOLLOW_UP_REPORT',
-            description: rawText,
-            sourceQuote: rawText,
+            description: cleanedText,
+            sourceQuote: cleanedText,
             author: senderName || 'Field Reporter',
           });
         }

@@ -43,6 +43,15 @@ function matchValue(actual, expected) {
       return !matchValue(actual, expected.$ne);
     }
   }
+  if (actual === undefined || actual === null) {
+    return expected === null || expected === undefined;
+  }
+  if (typeof actual === 'boolean' || typeof expected === 'boolean') {
+    return Boolean(actual) === Boolean(expected);
+  }
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    return actual === expected;
+  }
   return String(actual) === String(expected);
 }
 
@@ -55,6 +64,23 @@ function matchesFilter(doc, query = {}) {
     }
   }
   return true;
+}
+
+function applyUpdate(doc, update = {}) {
+  const setVals = update.$set || update;
+  for (const [key, val] of Object.entries(setVals)) {
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      let curr = doc;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!curr[parts[i]]) curr[parts[i]] = {};
+        curr = curr[parts[i]];
+      }
+      curr[parts[parts.length - 1]] = val;
+    } else {
+      doc[key] = val;
+    }
+  }
 }
 
 export class MemoryCollection {
@@ -105,15 +131,23 @@ export class MemoryCollection {
           result.sort((a, b) => {
             const valA = getNestedValue(a, field);
             const valB = getNestedValue(b, field);
-            if (valA < valB) return order === -1 ? 1 : -1;
-            if (valA > valB) return order === -1 ? -1 : 1;
+            let normA = valA instanceof Date ? valA.getTime() : valA;
+            let normB = valB instanceof Date ? valB.getTime() : valB;
+            if (typeof normA === 'string' && !isNaN(Date.parse(normA))) normA = new Date(normA).getTime();
+            if (typeof normB === 'string' && !isNaN(Date.parse(normB))) normB = new Date(normB).getTime();
+            if (normA == null) return 1;
+            if (normB == null) return -1;
+            if (normA < normB) return order === -1 ? 1 : -1;
+            if (normA > normB) return order === -1 ? -1 : 1;
             return 0;
           });
         }
         return chain;
       },
       limit(n) {
-        result = result.slice(0, n);
+        if (typeof n === 'number' && n > 0) {
+          result = result.slice(0, n);
+        }
         return chain;
       },
       then(resolve, reject) {
@@ -151,8 +185,7 @@ export class MemoryCollection {
   async updateOne(query, update = {}) {
     const doc = this.docs.find((d) => matchesFilter(d, query));
     if (doc) {
-      const setVals = update.$set || update;
-      Object.assign(doc, setVals);
+      applyUpdate(doc, update);
       doc.updatedAt = new Date();
       return { modifiedCount: 1 };
     }
@@ -161,10 +194,9 @@ export class MemoryCollection {
 
   async updateMany(query, update = {}) {
     let count = 0;
-    const setVals = update.$set || update;
     for (const doc of this.docs) {
       if (matchesFilter(doc, query)) {
-        Object.assign(doc, setVals);
+        applyUpdate(doc, update);
         doc.updatedAt = new Date();
         count++;
       }
@@ -175,8 +207,7 @@ export class MemoryCollection {
   async findByIdAndUpdate(id, update = {}) {
     const doc = await this.findById(id);
     if (doc) {
-      const setVals = update.$set || update;
-      Object.assign(doc, setVals);
+      applyUpdate(doc, update);
       await doc.save();
       return doc;
     }
