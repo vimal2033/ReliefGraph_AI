@@ -130,7 +130,7 @@ GEMINI_MODEL=gemini-3.8-flash
 
 2. **1-Click Flood Scenario Loader:**
    - Click the orange **"Run Simulation"** button in the top navbar.
-   - The system ingests realistic flood disaster reports across 5 sectors (Riverside School, Central Hospital, St. Jude Community Hall, East Embankment, Nehru Stadium).
+   - The system ingests 20 realistic flood disaster reports across 5 sectors (Riverside School, Central Hospital, St. Jude Community Hall, East Embankment, Nehru Stadium).
 
 3. **Flagship Gemini Contradiction Alerts:**
    - Check the **Priority Contradiction Alerts** feed on the left:

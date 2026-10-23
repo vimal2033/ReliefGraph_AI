@@ -176,10 +176,12 @@ router.post('/alerts/:id/execute-reroute', async (req, res) => {
     const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ error: 'Alert not found' });
 
-    const { sourceName, vehicle, notes } = req.body || {};
+    const { sourceName, vehicle, notes, quantity } = req.body || {};
+    const dispatchQty = parseInt(quantity, 10) || 35;
+    const dispatchUnit = alert.resourceCategory === 'WATER' ? 'cans' : (alert.resourceCategory === 'MEDICAL' ? 'vials' : 'packets');
 
     alert.status = 'RE_DISPATCHED';
-    alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed supplies from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
+    alert.aiExplanation = `[AI RE-ROUTE EXECUTED] Re-routed ${dispatchQty} ${dispatchUnit} from ${sourceName || 'Nehru Stadium Arena'} via ${vehicle || 'NDRF Rapid Van 02'}. Estimated arrival in 22 mins.`;
     await alert.save();
 
     // Check remaining active alerts & replenish on-site stock meter
@@ -213,8 +215,8 @@ router.post('/alerts/:id/execute-reroute', async (req, res) => {
       shelterId: alert.shelterId,
       shelterName: alert.shelterName,
       resourceCategory: alert.resourceCategory,
-      quantity: 35,
-      unit: alert.resourceCategory === 'WATER' ? 'cans' : 'units',
+      quantity: dispatchQty,
+      unit: dispatchUnit,
       vehicleInfo: vehicle || 'NDRF Rapid Van 02',
       formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'IN_TRANSIT',
@@ -251,6 +253,8 @@ router.post('/alerts/:id/redispatch', async (req, res) => {
       await Shelter.findByIdAndUpdate(alert.shelterId, { status: 'WARNING' });
     }
 
+    const dispatchUnit = alert.resourceCategory === 'WATER' ? 'cans' : (alert.resourceCategory === 'MEDICAL' ? 'vials' : 'packets');
+
     // Create new rapid dispatch
     const newDispatch = new Dispatch({
       trackingCode: `EMERG-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -258,7 +262,7 @@ router.post('/alerts/:id/redispatch', async (req, res) => {
       shelterName: alert.shelterName,
       resourceCategory: alert.resourceCategory,
       quantity: 50,
-      unit: 'emergency units',
+      unit: dispatchUnit,
       vehicleInfo: 'Priority Escort Van 09',
       formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'IN_TRANSIT',

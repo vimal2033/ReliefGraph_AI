@@ -38,7 +38,9 @@ function MapUpdater({ shelters }) {
     const valid = (shelters || []).filter(
       (s) => s.coordinates && typeof s.coordinates.lat === 'number' && typeof s.coordinates.lng === 'number'
     );
-    if (valid.length > 0) {
+    if (valid.length === 1) {
+      map.flyTo([valid[0].coordinates.lat, valid[0].coordinates.lng], 14, { duration: 1 });
+    } else if (valid.length > 1) {
       const bounds = L.latLngBounds(valid.map((s) => [s.coordinates.lat, s.coordinates.lng]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }

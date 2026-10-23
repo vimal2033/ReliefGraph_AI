@@ -161,6 +161,7 @@ export default function App() {
         sourceName: plan.recommendedOption.sourceName,
         vehicle: plan.recommendedOption.vehicle,
         notes: plan.aiJustification,
+        quantity: plan.quantityNeeded,
       });
       setReroutePlan(null);
       await loadDashboardData();
