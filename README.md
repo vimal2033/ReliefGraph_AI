@@ -1,7 +1,7 @@
 # ReliefGraph AI — Disaster Relief Coordination System
 > **Google Gemini Hackathon 2026** • Track: *Society & Well-being*  
 > **Team Name:** Cipher (BIT Durg)  
-> **Team Members:** Vimal Mishra (Leader), Abhishek Dewangan (Developer), Vandana Sahu (Presenter), Manish Kumar (Designer)
+> **Team Members:** Vimal Mishra (Leader), Ritu Mishra (Designer)
 
 ---
 
